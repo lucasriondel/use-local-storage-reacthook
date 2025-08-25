@@ -12,6 +12,87 @@ import { resolveDefaults } from "./utils/resolveDefaults";
 import { defaultDeserialize, defaultSerialize } from "./utils/serialization";
 import { writeLocalStorage } from "./utils/writeLocalStorage";
 
+/**
+ * A React hook for managing state that's automatically persisted to localStorage.
+ *
+ * This hook provides a powerful interface for storing complex objects in localStorage
+ * with support for default values, data migration, cross-tab synchronization, and more.
+ *
+ * @template T - The type of the state object. Must extend Record<string, unknown>
+ *
+ * @param defaultsOption - Default values for the state object. Can be either:
+ *   - A partial object containing default values
+ *   - A function that returns default values (useful for expensive computations)
+ *
+ * @param options - Configuration options for the hook
+ * @param options.key - The localStorage key to store the data under
+ * @param options.codecs - Optional custom serialization/deserialization functions for specific properties
+ * @param options.sanitize - Optional function to sanitize/validate data read from localStorage
+ * @param options.onChange - Optional callback fired when state changes, receives the new state and metadata about the change source
+ * @param options.syncAcrossTabs - Whether to sync state changes across browser tabs (default: true)
+ * @param options.version - Optional version number for data migration
+ * @param options.migrate - Optional function to migrate old data when version changes
+ *
+ * @returns A tuple containing:
+ *   - [0] The current state object
+ *   - [1] An API object with methods to manipulate the state:
+ *     - `setState`: Standard React setState function
+ *     - `get`: Get a specific property value
+ *     - `set`: Set a specific property value (or delete if undefined)
+ *     - `patch`: Merge partial updates into the state
+ *     - `remove`: Remove one or more properties
+ *     - `clear`: Clear all data from localStorage and reset to empty state
+ *
+ * @example
+ * ```tsx
+ * // Basic usage with default values
+ * const [settings, settingsApi] = useLocalStorageState(
+ *   { theme: 'light', language: 'en' },
+ *   { key: 'app-settings' }
+ * );
+ *
+ * // Update a single property
+ * settingsApi.set('theme', 'dark');
+ *
+ * // Merge multiple properties
+ * settingsApi.patch({ theme: 'dark', language: 'fr' });
+ *
+ * // With change callback and sanitization
+ * const [userPrefs, userPrefsApi] = useLocalStorageState(
+ *   { notifications: true, volume: 0.8 },
+ *   {
+ *     key: 'user-preferences',
+ *     sanitize: (data) => ({
+ *       ...data,
+ *       volume: Math.max(0, Math.min(1, data.volume || 0.8))
+ *     }),
+ *     onChange: (newState, meta) => {
+ *       console.log('Settings changed:', newState, 'Source:', meta.source);
+ *     }
+ *   }
+ * );
+ *
+ * // With data migration
+ * const [config, configApi] = useLocalStorageState(
+ *   { apiUrl: 'https://api.example.com', timeout: 5000 },
+ *   {
+ *     key: 'app-config',
+ *     version: 2,
+ *     migrate: (stored, version) => {
+ *       if (version < 2 && typeof stored === 'object' && stored !== null) {
+ *         // Migrate from v1 to v2: rename 'endpoint' to 'apiUrl'
+ *         const old = stored as any;
+ *         return {
+ *           apiUrl: old.endpoint || 'https://api.example.com',
+ *           timeout: old.timeout || 5000
+ *         };
+ *       }
+ *       return stored as Partial<typeof config>;
+ *     }
+ *   }
+ * );
+ * ```
+ */
 export function useLocalStorageState<T extends Record<string, unknown>>(
   defaultsOption: DeepPartial<T> | (() => DeepPartial<T>),
   options: LocalStorageStateOptions<T>
@@ -132,24 +213,4 @@ export function useLocalStorageState<T extends Record<string, unknown>>(
   );
 
   return [state, api];
-}
-
-export function useLocalStorageProp<
-  T extends Record<string, unknown>,
-  K extends keyof T
->(
-  prop: K,
-  defaultsOption: DeepPartial<T> | (() => DeepPartial<T>) | undefined,
-  options: LocalStorageStateOptions<T>
-): [T[K] | undefined, (value: T[K] | undefined) => void] {
-  const [state, api] = useLocalStorageState<T>(
-    defaultsOption || ({} as DeepPartial<T>),
-    options
-  );
-  const value = state[prop];
-  const setValue = React.useCallback(
-    (v: T[K] | undefined) => api.set(prop, v),
-    [api, prop]
-  );
-  return [value, setValue];
 }

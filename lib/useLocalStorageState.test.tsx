@@ -1,9 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  useLocalStorageProp,
-  useLocalStorageState,
-} from "./useLocalStorageState";
+import { useLocalStorageState } from "./useLocalStorageState";
 
 function mockLocalStorage() {
   const store: Record<string, string> = {};
@@ -78,23 +75,6 @@ describe("useLocalStorageState", () => {
       const states = onChange.mock.calls.map((c) => c[0]);
       expect(states[0]).toEqual({ theme: "dark" });
       expect(states[1]).toEqual({ theme: "dark", page: 3 });
-    });
-  });
-
-  describe("prop hook", () => {
-    it("reads/sets a single key", () => {
-      const { result } = renderHook(() =>
-        useLocalStorageProp<{ theme?: string; page?: number }, "theme">(
-          "theme",
-          undefined,
-          { key: "prefs" }
-        )
-      );
-      const [value, setValue] = result.current;
-      expect(value).toBeUndefined();
-      act(() => setValue("dark"));
-      const parsed = JSON.parse(window.localStorage.getItem("prefs") || "{}");
-      expect(parsed.theme).toBe("dark");
     });
   });
 
