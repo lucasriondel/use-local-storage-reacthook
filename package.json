@@ -1,0 +1,74 @@
+{
+  "name": "use-local-storage-reacthook",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "A React hook for managing local storage",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c -w",
+    "test": "vitest run",
+    "test:watch": "vitest  --watch",
+    "test:coverage": "vitest run --coverage",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint lib --ext .ts,.tsx",
+    "lint:fix": "eslint lib --ext .ts,.tsx --fix",
+    "clean": "rimraf dist",
+    "prepublishOnly": "pnpm run clean && pnpm run build"
+  },
+  "keywords": [
+    "react",
+    "hook",
+    "local",
+    "storage",
+    "typescript"
+  ],
+  "author": "lucasriondel",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lucasriondel/use-local-storage-reacthook.git"
+  },
+  "license": "MIT",
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.34.0",
+    "@rollup/plugin-commonjs": "^25.0.0",
+    "@rollup/plugin-node-resolve": "^15.0.0",
+    "@rollup/plugin-terser": "^0.4.0",
+    "@rollup/plugin-typescript": "^11.0.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.0",
+    "@types/react": "^19.1.11",
+    "@types/react-dom": "^19.1.7",
+    "@typescript-eslint/eslint-plugin": "^8.40.0",
+    "@typescript-eslint/parser": "^8.40.0",
+    "@vitest/coverage-v8": "^1.0.0",
+    "eslint": "^9.34.0",
+    "jsdom": "^26.1.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "rimraf": "^5.0.0",
+    "rollup": "^4.0.0",
+    "rollup-plugin-dts": "^6.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

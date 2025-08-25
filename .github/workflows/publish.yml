@@ -1,0 +1,180 @@
+name: Publish to NPM
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "lib/**"
+      - "package.json"
+      - "tsconfig.json"
+      - "rollup.config.js"
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: "Version bump type"
+        required: true
+        default: "patch"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - prerelease
+
+permissions:
+  contents: write
+  packages: write
+  pull-requests: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Configure Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git config --local url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
+
+      - name: Determine version bump type
+        id: version_type
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "type=${{ inputs.version_type }}" >> $GITHUB_OUTPUT
+          else
+            # Auto-detect version type from commit message
+            commit_msg="${{ github.event.head_commit.message }}"
+            if [[ $commit_msg =~ \[major\] ]] || [[ $commit_msg =~ BREAKING\ CHANGE ]]; then
+              echo "type=major" >> $GITHUB_OUTPUT
+            elif [[ $commit_msg =~ \[minor\] ]] || [[ $commit_msg =~ feat: ]]; then
+              echo "type=minor" >> $GITHUB_OUTPUT
+            elif [[ $commit_msg =~ \[prerelease\] ]] || [[ $commit_msg =~ \[pre\] ]]; then
+              echo "type=prerelease" >> $GITHUB_OUTPUT
+            else
+              echo "type=patch" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Check if version bump is needed
+        id: version_check
+        run: |
+          current_version=$(node -p "require('./package.json').version")
+          echo "current_version=$current_version" >> $GITHUB_OUTPUT
+
+          # Skip if this is already a published version
+          if npm view use-local-storage-reacthook@$current_version version 2>/dev/null; then
+            echo "needs_bump=true" >> $GITHUB_OUTPUT
+            echo "Version $current_version already exists on npm, will bump version"
+          else
+            echo "needs_bump=false" >> $GITHUB_OUTPUT
+            echo "Version $current_version does not exist on npm, can publish as-is"
+          fi
+
+      - name: Bump version
+        if: steps.version_check.outputs.needs_bump == 'true'
+        run: |
+          pnpm version ${{ steps.version_type.outputs.type }} --no-git-tag-version
+          new_version=$(node -p "require('./package.json').version")
+          echo "NEW_VERSION=$new_version" >> $GITHUB_ENV
+
+      - name: Set current version if no bump needed
+        if: steps.version_check.outputs.needs_bump == 'false'
+        run: |
+          echo "NEW_VERSION=${{ steps.version_check.outputs.current_version }}" >> $GITHUB_ENV
+
+      - name: Run linting
+        run: pnpm run lint
+
+      - name: Run type checking
+        run: pnpm run type-check
+
+      - name: Run tests
+        run: pnpm run test
+
+      - name: Build project
+        run: pnpm run build
+
+      - name: Commit version bump
+        if: steps.version_check.outputs.needs_bump == 'true'
+        run: |
+          git add package.json
+          git commit -m "chore: bump version to ${{ env.NEW_VERSION }} [skip ci]"
+
+      - name: Create and push tag
+        run: |
+          git tag "v${{ env.NEW_VERSION }}"
+          git push origin HEAD:main
+          git push origin "v${{ env.NEW_VERSION }}"
+
+      - name: Publish to NPM
+        run: pnpm publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ env.NEW_VERSION }}
+          release_name: Release v${{ env.NEW_VERSION }}
+          body: |
+            ## Changes in v${{ env.NEW_VERSION }}
+
+            Version bump: ${{ steps.version_type.outputs.type }}
+
+            See the [CHANGELOG](./CHANGELOG.md) for detailed changes.
+          draft: false
+          prerelease: ${{ contains(steps.version_type.outputs.type, 'prerelease') }}
+
+  # Separate job to notify on failure
+  notify-failure:
+    runs-on: ubuntu-latest
+    needs: publish
+    if: failure()
+
+    steps:
+      - name: Notify on failure
+        run: |
+          echo "❌ Publication failed. Check the logs above for details."
+          echo "Common issues:"
+          echo "- NPM_TOKEN secret not set"
+          echo "- Package name already exists"
+          echo "- Tests or linting failed"
+          echo "- Build errors"
