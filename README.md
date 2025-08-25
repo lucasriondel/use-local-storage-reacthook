@@ -1,6 +1,6 @@
-# 🔗 useUrlState
+# 💾 useLocalStorageState
 
-A powerful React hook for managing state synchronized with URL search parameters. Perfect for creating shareable URLs, maintaining filters across page refreshes, and building user-friendly web applications with deep linking support.
+A powerful React hook for managing state that's automatically persisted to localStorage. Perfect for maintaining user preferences, form data, and application settings across browser sessions with automatic synchronization and data migration support.
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-ready-blue.svg)](https://www.typescriptlang.org/)
 [![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -9,70 +9,79 @@ A powerful React hook for managing state synchronized with URL search parameters
 ## ✨ Features
 
 - 🎯 **Type-safe** - Full TypeScript support with generic types
-- 🔄 **Automatic URL sync** - State changes are reflected in the URL instantly
-- ⏱️ **Debouncing** - Prevent excessive URL updates during rapid state changes
-- 🧭 **Browser history** - Full support for back/forward navigation
-- 🏷️ **Namespacing** - Avoid conflicts when using multiple instances
+- 💾 **Automatic localStorage sync** - State changes are persisted instantly
+- 🔄 **Cross-tab synchronization** - Share state changes across browser tabs
 - 🛡️ **Validation** - Built-in sanitization and validation hooks
 - 📦 **Custom serialization** - Define custom codecs for complex data types
+- 🔄 **Data migration** - Handle schema changes with version migration
+- ⚡ **Performance optimized** - Efficient serialization and change detection
 - 🪶 **Lightweight** - Zero dependencies (except React peer dependency)
 
 ## 📦 Installation
 
 ```bash
 # Using npm
-npm install use-url-state-reacthook
+npm install use-local-storage-reacthook
 
 # Using yarn
-yarn add use-url-state-reacthook
+yarn add use-local-storage-reacthook
 
 # Using pnpm
-pnpm add use-url-state-reacthook
+pnpm add use-local-storage-reacthook
 ```
 
 ## 🚀 Quick Start
 
 ```tsx
-import { useUrlState } from "use-url-state-reacthook";
+import { useLocalStorageState } from "use-local-storage-reacthook";
 
-function SearchFilters() {
-  const [filters, filtersApi] = useUrlState({
-    search: "",
-    category: "all",
-    page: 1,
-  });
+function UserPreferences() {
+  const [settings, settingsApi] = useLocalStorageState(
+    {
+      theme: "light",
+      language: "en",
+      notifications: true,
+    },
+    { key: "user-preferences" }
+  );
 
   return (
     <div>
-      <input
-        value={filters.search}
-        onChange={(e) => filtersApi.set("search", e.target.value)}
-        placeholder="Search..."
-      />
-
       <select
-        value={filters.category}
-        onChange={(e) => filtersApi.set("category", e.target.value)}
+        value={settings.theme}
+        onChange={(e) => settingsApi.set("theme", e.target.value)}
       >
-        <option value="all">All Categories</option>
-        <option value="tech">Technology</option>
-        <option value="design">Design</option>
+        <option value="light">Light Theme</option>
+        <option value="dark">Dark Theme</option>
       </select>
 
-      <div>Current page: {filters.page}</div>
-      <button onClick={() => filtersApi.set("page", filters.page + 1)}>
-        Next Page
-      </button>
+      <select
+        value={settings.language}
+        onChange={(e) => settingsApi.set("language", e.target.value)}
+      >
+        <option value="en">English</option>
+        <option value="fr">French</option>
+        <option value="es">Spanish</option>
+      </select>
+
+      <label>
+        <input
+          type="checkbox"
+          checked={settings.notifications}
+          onChange={(e) => settingsApi.set("notifications", e.target.checked)}
+        />
+        Enable Notifications
+      </label>
     </div>
   );
 }
 ```
 
-The URL will automatically update to something like: `?search=react&category=tech&page=2`
+Your settings will automatically persist across browser sessions!
 
 ## 📚 API Reference
 
-### `useUrlState(defaults?, options?)`
+### `useLocalStorageState(defaults, options)`
 
 Returns a tuple `[state, api]` where:
 
@@ -81,56 +90,61 @@ Returns a tuple `[state, api]` where:
 
 #### Parameters
 
-| Parameter  | Type                 | Description                             |
-| ---------- | -------------------- | --------------------------------------- |
-| `defaults` | `T \| (() => T)`     | Default values for the state (optional) |
-| `options`  | `UrlStateOptions<T>` | Configuration options (optional)        |
+| Parameter  | Type                                       | Description                  |
+| ---------- | ------------------------------------------ | ---------------------------- |
+| `defaults` | `DeepPartial<T> \| (() => DeepPartial<T>)` | Default values for the state |
+| `options`  | `LocalStorageStateOptions<T>`              | Configuration options        |
 
 #### Options
 
-| Option           | Type                                       | Default     | Description                                  |
-| ---------------- | ------------------------------------------ | ----------- | -------------------------------------------- |
-| `codecs`         | `Partial<{ [K in keyof T]: Codec<T[K]> }>` | `{}`        | Custom serialization for specific properties |
-| `sanitize`       | `(draft: Partial<T>) => Partial<T>`        | `undefined` | Validation/sanitization function             |
-| `onChange`       | `(state: T, meta) => void`                 | `undefined` | Callback fired on state changes              |
-| `history`        | `'replace' \| 'push'`                      | `'replace'` | Browser history behavior                     |
-| `debounceMs`     | `number`                                   | `undefined` | Debounce delay for URL updates               |
-| `syncOnPopState` | `boolean`                                  | `true`      | Sync state on browser navigation             |
-| `namespace`      | `string`                                   | `undefined` | Prefix for URL parameters                    |
+| Option           | Type                                               | Default     | Description                                       |
+| ---------------- | -------------------------------------------------- | ----------- | ------------------------------------------------- |
+| `key`            | `string`                                           | Required    | The localStorage key to store data under          |
+| `codecs`         | `Partial<{ [K in keyof T]: Codec<T[K]> }>`         | `{}`        | Custom serialization for specific properties      |
+| `sanitize`       | `(draft: DeepPartial<T>) => DeepPartial<T>`        | `undefined` | Validation/sanitization function                  |
+| `onChange`       | `(state: T, meta) => void`                         | `undefined` | Callback fired on state changes                   |
+| `syncAcrossTabs` | `boolean`                                          | `true`      | Sync state changes across browser tabs            |
+| `version`        | `number`                                           | `undefined` | Version number for data migration                 |
+| `migrate`        | `(stored: unknown, version: number) => Partial<T>` | `undefined` | Function to migrate old data when version changes |
 
 #### API Methods
 
-| Method     | Signature                                | Description                    |
-| ---------- | ---------------------------------------- | ------------------------------ |
-| `setState` | `(updater: T \| (prev: T) => T) => void` | Replace entire state           |
-| `get`      | `(key: keyof T) => T[key]`               | Get value of specific property |
-| `set`      | `(key: keyof T, value: T[key]) => void`  | Set specific property          |
-| `patch`    | `(partial: Partial<T>) => void`          | Merge partial changes          |
-| `remove`   | `(...keys: (keyof T)[]) => void`         | Remove properties              |
-| `clear`    | `() => void`                             | Clear all state                |
+| Method     | Signature                                            | Description                                    |
+| ---------- | ---------------------------------------------------- | ---------------------------------------------- |
+| `setState` | `(updater: T \| (prev: T) => T) => void`             | Replace entire state                           |
+| `get`      | `(key: keyof T) => T[key] \| undefined`              | Get value of specific property                 |
+| `set`      | `(key: keyof T, value: T[key] \| undefined) => void` | Set specific property (or delete if undefined) |
+| `patch`    | `(partial: DeepPartial<T>) => void`                  | Merge partial changes                          |
+| `remove`   | `(...keys: (keyof T)[]) => void`                     | Remove one or more properties                  |
+| `clear`    | `() => void`                                         | Clear all data from localStorage               |
 
 ## 🎯 Examples
 
 ### Basic Usage
 
 ```tsx
-import { useUrlState } from "use-url-state-reacthook";
+import { useLocalStorageState } from "use-local-storage-reacthook";
 
 function App() {
-  const [state, api] = useUrlState({ name: "", age: 0 });
+  const [profile, profileApi] = useLocalStorageState(
+    { name: "", age: 0 },
+    { key: "user-profile" }
+  );
 
   return (
     <div>
       <input
-        value={state.name}
-        onChange={(e) => api.set("name", e.target.value)}
+        value={profile.name}
+        onChange={(e) => profileApi.set("name", e.target.value)}
+        placeholder="Enter your name"
       />
       <input
         type="number"
-        value={state.age}
-        onChange={(e) => api.set("age", parseInt(e.target.value) || 0)}
+        value={profile.age}
+        onChange={(e) => profileApi.set("age", parseInt(e.target.value) || 0)}
+        placeholder="Enter your age"
       />
-      <button onClick={() => api.clear()}>Clear All</button>
+      <button onClick={() => profileApi.clear()}>Clear Profile</button>
     </div>
   );
 }
@@ -139,47 +153,45 @@ function App() {
 ### With Custom Serialization
 
 ```tsx
-interface Filters {
+interface AppSettings {
   tags: string[];
-  dateRange: { start: Date; end: Date };
-  settings: { theme: string; lang: string };
+  lastLoginDate: Date;
+  preferences: { theme: string; lang: string };
 }
 
-const [filters, api] = useUrlState<Filters>(
+const [settings, settingsApi] = useLocalStorageState<AppSettings>(
   {
     tags: [],
-    dateRange: { start: new Date(), end: new Date() },
-    settings: { theme: "light", lang: "en" },
+    lastLoginDate: new Date(),
+    preferences: { theme: "light", lang: "en" },
   },
   {
+    key: "app-settings",
     codecs: {
       tags: {
         parse: (str) => str.split(",").filter(Boolean),
         format: (tags) => tags.join(","),
       },
-      dateRange: {
-        parse: (str) => {
-          const [start, end] = str.split("|").map((d) => new Date(d));
-          return { start, end };
-        },
-        format: (range) =>
-          `${range.start.toISOString()}|${range.end.toISOString()}`,
+      lastLoginDate: {
+        parse: (str) => new Date(str),
+        format: (date) => date.toISOString(),
       },
     },
   }
 );
 ```
 
-### With Validation and Debouncing
+### With Validation and Change Tracking
 
 ```tsx
-const [userPrefs, api] = useUrlState(
+const [userPrefs, prefsApi] = useLocalStorageState(
   {
     theme: "light",
     fontSize: 16,
     language: "en",
   },
   {
+    key: "user-preferences",
     sanitize: (draft) => ({
       theme: ["light", "dark"].includes(draft.theme) ? draft.theme : "light",
       fontSize: Math.max(12, Math.min(24, draft.fontSize || 16)),
@@ -187,42 +199,42 @@ const [userPrefs, api] = useUrlState(
         ? draft.language
         : "en",
     }),
-    debounceMs: 300, // Wait 300ms before updating URL
     onChange: (newState, { source }) => {
       console.log(`Preferences updated from ${source}:`, newState);
-      // Save to analytics, localStorage, etc.
+      // Send analytics, trigger theme updates, etc.
     },
   }
 );
 ```
 
-### Multiple Hook Instances with Namespacing
+### Multiple Hook Instances with Different Keys
 
 ```tsx
 function Dashboard() {
-  // User filters (prefixed with 'user_')
-  const [userFilters, userApi] = useUrlState(
+  // User filters stored under 'user-filters' key
+  const [userFilters, userApi] = useLocalStorageState(
     {
       role: "all",
       department: "all",
     },
-    { namespace: "user" }
+    { key: "user-filters" }
   );
 
-  // Product filters (prefixed with 'product_')
-  const [productFilters, productApi] = useUrlState(
+  // Product filters stored under 'product-filters' key
+  const [productFilters, productApi] = useLocalStorageState(
     {
       category: "all",
       inStock: true,
     },
-    { namespace: "product" }
+    { key: "product-filters" }
   );
 
-  // URL: ?user_role=admin&user_department=engineering&product_category=electronics&product_inStock=true
+  // Each hook manages its own localStorage entry independently
+  // localStorage: { "user-filters": {...}, "product-filters": {...} }
 }
 ```
 
-### Complex State Management
+### Complex State Management with Data Migration
 
 ```tsx
 interface AppState {
@@ -235,15 +247,35 @@ interface AppState {
   sort: { field: string; direction: "asc" | "desc" };
 }
 
-const [appState, api] = useUrlState<AppState>({
-  filters: {
-    search: "",
-    category: [],
-    priceRange: [0, 1000],
+const [appState, api] = useLocalStorageState<AppState>(
+  {
+    filters: {
+      search: "",
+      category: [],
+      priceRange: [0, 1000],
+    },
+    view: "grid",
+    sort: { field: "name", direction: "asc" },
   },
-  view: "grid",
-  sort: { field: "name", direction: "asc" },
-});
+  {
+    key: "app-state",
+    version: 2,
+    migrate: (stored, version) => {
+      if (version < 2) {
+        // Migrate from v1: add new priceRange field
+        const oldState = stored as any;
+        return {
+          ...oldState,
+          filters: {
+            ...oldState.filters,
+            priceRange: [0, 1000], // Add default price range
+          },
+        };
+      }
+      return stored as Partial<AppState>;
+    },
+  }
+);
 
 // Update nested properties
 api.patch({
@@ -262,39 +294,72 @@ api.set("sort", {
 
 ## 🔧 Advanced Configuration
 
-### History Management
+### Cross-Tab Synchronization
 
 ```tsx
-// Replace current URL (default)
-const [state, api] = useUrlState(defaults, { history: "replace" });
+// Enable cross-tab sync (default)
+const [state, api] = useLocalStorageState(defaults, {
+  key: "shared-state",
+  syncAcrossTabs: true,
+});
 
-// Create new history entries (enables back/forward navigation between state changes)
-const [state, api] = useUrlState(defaults, { history: "push" });
+// Disable cross-tab sync for performance or privacy
+const [state, api] = useLocalStorageState(defaults, {
+  key: "local-only-state",
+  syncAcrossTabs: false,
+});
 ```
 
-### Disabling Browser Navigation Sync
+### Data Migration Between Versions
 
 ```tsx
-// Don't sync state when user uses back/forward buttons
-const [state, api] = useUrlState(defaults, { syncOnPopState: false });
-```
-
-### Performance Optimization
-
-```tsx
-// Debounce URL updates for better performance with rapid changes
-const [searchState, api] = useUrlState(
-  { query: "" },
+const [config, configApi] = useLocalStorageState(
+  { apiUrl: "https://api.example.com", timeout: 5000 },
   {
-    debounceMs: 300, // Wait 300ms before updating URL
+    key: "app-config",
+    version: 3,
+    migrate: (stored, currentVersion) => {
+      const data = stored as any;
+
+      if (currentVersion < 2) {
+        // v1 -> v2: rename 'endpoint' to 'apiUrl'
+        data.apiUrl = data.endpoint;
+        delete data.endpoint;
+      }
+
+      if (currentVersion < 3) {
+        // v2 -> v3: add timeout field
+        data.timeout = data.timeout || 5000;
+      }
+
+      return data;
+    },
   }
 );
+```
 
-// Perfect for search inputs that update frequently
-<input
-  value={searchState.query}
-  onChange={(e) => api.set("query", e.target.value)}
-/>;
+### Error Handling and Validation
+
+```tsx
+const [userInput, inputApi] = useLocalStorageState(
+  { email: "", age: 0 },
+  {
+    key: "user-input",
+    sanitize: (draft) => {
+      // Validate and sanitize data from localStorage
+      const email = typeof draft.email === "string" ? draft.email : "";
+      const age =
+        typeof draft.age === "number" && draft.age >= 0 ? draft.age : 0;
+
+      return { email, age };
+    },
+    onChange: (newState, { source }) => {
+      if (source === "external") {
+        console.log("State updated from another tab:", newState);
+      }
+    },
+  }
+);
 ```
 
 ## 📝 TypeScript Support
@@ -302,7 +367,7 @@ const [searchState, api] = useUrlState(
 The hook is fully typed and provides excellent TypeScript integration:
 
 ```tsx
-interface UserFilters {
+interface UserProfile {
   name: string;
   roles: ("admin" | "user" | "guest")[];
   isActive: boolean;
@@ -310,16 +375,29 @@ interface UserFilters {
 }
 
 // Full type safety
-const [filters, api] = useUrlState<UserFilters>({
-  name: "",
-  roles: [],
-  isActive: true,
-});
+const [profile, profileApi] = useLocalStorageState<UserProfile>(
+  {
+    name: "",
+    roles: [],
+    isActive: true,
+  },
+  { key: "user-profile" }
+);
 
 // TypeScript knows the exact shape
-api.set("name", "john"); // ✅ Valid
-api.set("roles", ["admin", "user"]); // ✅ Valid
-api.set("invalidProp", "value"); // ❌ TypeScript error
+profileApi.set("name", "john"); // ✅ Valid
+profileApi.set("roles", ["admin", "user"]); // ✅ Valid
+profileApi.set("invalidProp", "value"); // ❌ TypeScript error
+
+// Partial updates are also type-safe
+profileApi.patch({
+  name: "jane",
+  isActive: false,
+}); // ✅ Valid
+
+profileApi.patch({
+  invalidField: true,
+}); // ❌ TypeScript error
 ```
 
 ## 🤝 Contributing
@@ -332,9 +410,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- Inspired by the need for better URL state management in React applications
+- Inspired by the need for better localStorage state management in React applications
 - Built with TypeScript for maximum developer experience
-- Designed to be simple yet powerful for real-world use cases
+- Designed to handle complex state persistence scenarios with ease
+- Supports modern React patterns and best practices
 
 ---
 
