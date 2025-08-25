@@ -1,5 +1,5 @@
 {
-  "name": "use-local-storage-reacthook",
+  "name": "@lucasriondel/use-local-storage-reacthook",
   "version": "0.0.1",
   "type": "module",
   "description": "A React hook for managing local storage",

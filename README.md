@@ -21,19 +21,19 @@ A powerful React hook for managing state that's automatically persisted to local
 
 ```bash
 # Using npm
-npm install use-local-storage-reacthook
+npm install @lucasriondel/use-local-storage-reacthook
 
 # Using yarn
-yarn add use-local-storage-reacthook
+yarn add @lucasriondel/use-local-storage-reacthook
 
 # Using pnpm
-pnpm add use-local-storage-reacthook
+pnpm add @lucasriondel/use-local-storage-reacthook
 ```
 
 ## 🚀 Quick Start
 
 ```tsx
-import { useLocalStorageState } from "use-local-storage-reacthook";
+import { useLocalStorageState } from "@lucasriondel/use-local-storage-reacthook";
 
 function UserPreferences() {
   const [settings, settingsApi] = useLocalStorageState(
